@@ -1,0 +1,83 @@
+method: grid
+metric:
+  goal: maximize
+  name: val/acc.max
+name: a_2_4_ex1
+parameters:
+  accumulation_steps:
+    value: 2
+  batch_size:
+    value: 20
+  positional_encoding:
+    values:
+      - baseline
+      - implicit
+  apply_positional_mask:
+    value: false
+  positional_mask_threshold:
+    value: -1
+  random_state:
+    values:
+      - 361
+      - 1321
+      - 833
+  causal:
+    value: false
+  channels_last:
+    value: true
+  cls_token:
+    value: last
+  dataset:
+    value: cifar10
+  device:
+    value: cuda
+  dim_feedforward:
+    value: 128
+  dropout:
+    value: 0.1
+  include_position:
+    value: true
+  input_dim:
+    value: 3
+  learning_rate:
+    value: 0.001
+  model:
+    value: positional_transformer_classifier
+  model_dim:
+    value: 64
+  multiply_positional_mask_with:
+    value: all_logits
+  num_epochs:
+    value: 80
+  num_heads:
+    value: 8
+  num_layers:
+    value: 6
+  pe.activation:
+    value: Sine
+  pe.activation_params.w0:
+    value: 10
+  pe.final_activation:
+    value: Identity
+  pe.hidden_dim:
+    value: 64
+  pe.num_layers:
+    value: 3
+  pe.num_positional_dims:
+    value: 1
+  positional_attention_version:
+    value: v1
+  positional_logits_operation:
+    value: add
+  resolution_reduction:
+    value:
+      - false
+      - false
+      - false
+      - false
+      - false
+      - false
+  same_positional_encoding:
+    value: false
+  sigma.default:
+    value: 0.3

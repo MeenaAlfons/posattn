@@ -1,0 +1,89 @@
+model: positional_transformer_classifier
+dataset: cifar10
+random_state: 1
+num_epochs: 80
+device: cuda
+
+## dataset
+small_dataset: False
+batch_size: 20
+
+## cifar10
+channels_last: True
+
+## torch_model
+profile: False
+
+## positional_transformer_classifier
+positional_attention_version: v1
+num_classes: 10
+learning_rate: 0.001
+accumulation_steps: 2
+scheduler: ""
+scheduler_params: {}
+input_dim: 3
+num_layers: 6
+model_dim: 64
+num_heads: 8
+dim_feedforward: 128
+dropout: 0.1
+positional_encoding: implicit
+positional_logits_operation: add
+include_position: True
+same_positional_encoding: False
+causal: False
+apply_positional_mask: True
+# -1.0 means no threshold because gaussian mask is always positive
+positional_mask_threshold: 0.1
+multiply_positional_mask_with: all_logits # all_logits OR positional_logits
+sigma:
+  default: 0.3
+  # You can supply different sigma for each layer
+  # Only +ve values will override the default
+  layer_0: 0.0
+  layer_1: 0.0
+learn_sigma: True
+cls_token: last
+resolution_reduction: [False, False, False, False, False, False, False, False]
+resolution_reduction_kernel_size: 2
+pe:
+  num_layers: 3
+  hidden_dim: 64
+  num_positional_dims: 1
+  activation: Sine
+  final_activation: Identity
+  normalized: True
+  activation_params:
+    w0_initial: 0.0 # -ve or 0 means None
+    w0: 10.0
+    # You can supply different activation params for each layer
+    layer_0:
+      w0_initial: 0.0
+      w0: 0.0
+
+## scheduler ReduceLROnPlateau
+# scheduler_params:
+# patience: 5
+# factor: 0.5
+
+## scheduler CosineAnnealingLR
+# scheduler_params:
+# T_max: 5
+
+## hooks
+hooks:
+  - MaskLogHook
+  - PositionalEncodingHeatmapHook
+
+show_visuals: False
+
+## WandbExperiment
+model_dir: results
+checkpoint_path: results/checkpoints/last.pickle
+epoch_checkpoint_dir: results/checkpoints/
+logs_dir: logs/
+save_every_epochs: 2
+model_filename_pt: model.pt
+model_filename_onnx: model.onnx
+save_onnx: False
+log_times_per_epoch: 20

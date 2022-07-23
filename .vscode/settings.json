@@ -1,0 +1,10 @@
+{
+    "python.linting.pylamaEnabled": true,
+    "editor.formatOnSave": true,
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/venv": true,
+        "**/wandb": true,
+        "**/results": true,
+    }
+}

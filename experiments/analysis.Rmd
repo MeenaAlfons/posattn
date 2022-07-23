@@ -1,0 +1,260 @@
+---
+title: "Experiment Data Analysis"
+author: "Meena Kerolos"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document: default
+  html_document: default
+header-includes:
+  - \usepackage{leading}
+  - \leading{9pt}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(digits = 4)
+```
+
+```{r read_data, include=FALSE}
+# Read the data
+# runs <- read.table(file = "../../data/runs.csv", header = TRUE, sep = ",")
+runs <- read.table(file = "./data/runs.csv", header = TRUE, sep = ",")
+```
+
+```{r load_libraries, include=FALSE}
+# Load libraries
+library(lme4)
+library(regclass)
+library(plotrix)
+library(knitr)
+library(magrittr)
+library(kableExtra)
+library(glue)
+library(pwr)
+library(httpgd)
+library(checkmate)
+library(tseries)
+```
+
+# Extract Data
+
+```{r}
+sweep_names <- c(
+  "a_0_ex1", "a_1_ex1", "a_2_4_ex1", "a_0_ex2_3", "a_1_ex2_3", "a_2_4_ex2_3",
+  "b_0_ex1_2D", "b_1_ex1_2D", "b_2_4_ex1_2D", "b_0_ex2_3_2D", "b_1_ex2_3_2D",
+  "b_2_4_ex2_3_2D"
+)
+runs <- runs[runs$sweep_name %in% sweep_names, ]
+runs <- runs[order(runs$random_state), ]
+runs$positional_encoding <- as.factor(runs$positional_encoding)
+runs$apply_positional_mask <- as.factor(runs$apply_positional_mask)
+runs$positional_mask_threshold <- as.factor(runs$positional_mask_threshold)
+runs$random_state <- as.factor(runs$random_state)
+
+ex1 <- runs[(runs$pe_num_positional_dims == 1) & (runs$apply_positional_mask == "False"), ]
+ex2_1D <- runs[(runs$pe_num_positional_dims == 1) & (runs$positional_encoding == "implicit") & (runs$positional_mask_threshold == -1), ]
+ex2_2D <- runs[(runs$pe_num_positional_dims == 2) & (runs$positional_encoding == "implicit") & (runs$positional_mask_threshold == -1), ]
+ex3_1D <- runs[(runs$pe_num_positional_dims == 1) & (runs$positional_encoding == "implicit") & (runs$apply_positional_mask == "True"), ]
+ex3_2D <- runs[(runs$pe_num_positional_dims == 2) & (runs$positional_encoding == "implicit") & (runs$apply_positional_mask == "True"), ]
+
+ex_names <- c("ex1", "ex2_1D", "ex2_2D", "ex3_1D", "ex3_2D")
+ex_nums <- c(nrow(ex1), nrow(ex2_1D), nrow(ex2_2D), nrow(ex3_1D), nrow(ex3_2D))
+message("Number of samples:")
+print(ex_names)
+print(ex_nums)
+assert(all(ex_nums == 10))
+
+extract_groups <- function(df, response, treatment, treatment_values) {
+  group1 <- df[df[, treatment] == treatment_values[1], response]
+  group2 <- df[df[, treatment] == treatment_values[2], response]
+  result <- list("a" = group1, "b" = group2)
+  return(result)
+}
+response <- "val_acc_max"
+ex1_treatment <- "positional_encoding"
+ex2_treatment <- "apply_positional_mask"
+block <- "random_state"
+ex3_treatment <- "positional_mask_threshold"
+ex1_groups <- extract_groups(ex1, response, ex1_treatment, c("baseline", "implicit"))
+ex2_1D_groups <- extract_groups(ex2_1D, response, ex2_treatment, c("False", "True"))
+ex2_2D_groups <- extract_groups(ex2_2D, response, ex2_treatment, c("False", "True"))
+ex3_1D_groups <- extract_groups(ex3_1D, response, ex3_treatment, c(-1, 0.1))
+ex3_2D_groups <- extract_groups(ex3_2D, response, ex3_treatment, c(-1, 0.1))
+```
+
+# Box plot values
+```{r}
+boxplot_values <- function(values) {
+  options(digits = 6)
+  print(quantile(values))
+  options(digits = 4)
+  print(mean(values))
+  print(sd(values))
+}
+boxplot_values(ex1_groups$a)
+boxplot_values(ex1_groups$b)
+
+boxplot_values(ex2_1D_groups$a)
+boxplot_values(ex2_1D_groups$b)
+
+boxplot_values(ex3_1D_groups$a)
+boxplot_values(ex3_1D_groups$b)
+
+boxplot_values(ex2_2D_groups$a)
+boxplot_values(ex2_2D_groups$b)
+
+boxplot_values(ex3_2D_groups$a)
+boxplot_values(ex3_2D_groups$b)
+```
+
+# Power Analysis - Repeated Measures ANOVA = Paired t-test
+
+```{r}
+power_test_t <- function(groups, power, n, type = "paired") {
+  group1 <- groups$a
+  group2 <- groups$b
+
+  # The observed difference and standard deviation.
+  mean_difference <- abs(mean(group1) - mean(group2))
+  standard_deviation <- sd(c(mean(group1), mean(group2)))
+  print(sprintf(
+    "the observed difference and standard deviation: %.4f and %.4f",
+    mean_difference,
+    standard_deviation
+  ))
+  d <- mean_difference / standard_deviation
+
+  pwr.t.test(
+    d = d,
+    n = n,
+    power = power,
+    sig.level = 0.05,
+    type = type,
+    alternative = "two.sided"
+  )
+}
+n <- c(5, 6, 7)
+power <- NULL
+power_test_t(ex1_groups, power, n)
+power_test_t(ex2_1D_groups, power, n)
+power_test_t(ex2_2D_groups, power, n)
+power_test_t(ex3_1D_groups, power, n)
+power_test_t(ex3_2D_groups, power, n)
+```
+
+
+
+# Paired t-test
+
+```{r}
+paired_t_test <- function(groups) {
+  group1 <- groups$a
+  group2 <- groups$b
+
+  z <- t.test(group1, group2, paired = T)
+  return(z$p.value)
+}
+paired_t_test(ex1_groups)
+paired_t_test(ex2_1D_groups)
+paired_t_test(ex2_2D_groups)
+paired_t_test(ex3_1D_groups)
+paired_t_test(ex3_2D_groups)
+```
+
+# Repeated measures ANOVA
+
+```{r}
+repeated_anova_test <- function(df, response, treatment, block) {
+  formula <- paste(response, "~", treatment, "+", block, sep = " ")
+  model <- lm(formula, data = df)
+  anv <- anova(model)
+  print(summary(model))
+  # qqnorm(residuals(model))
+  # plot(fitted(model), residuals(model))
+  print(jarque.bera.test(residuals(model)))
+  pvalue <- anv$`Pr(>F)`[1]
+  return(pvalue)
+}
+repeated_anova_test(ex1, response, ex1_treatment, block)
+repeated_anova_test(ex2_1D, response, ex2_treatment, block)
+repeated_anova_test(ex2_2D, response, ex2_treatment, block)
+repeated_anova_test(ex3_1D, response, ex3_treatment, block)
+repeated_anova_test(ex3_2D, response, ex3_treatment, block)
+```
+
+
+# Normality 
+
+```{r}
+
+# Normality is doubtful
+par(mfrow = c(1, 2))
+qqnorm(ex1_groups$a - ex1_groups$b)
+par(mfrow = c(1, 2))
+qqnorm(ex2_1D_groups$a - ex2_1D_groups$b)
+qqnorm(ex2_1D_groups$b)
+par(mfrow = c(1, 2))
+qqnorm(ex2_2D_groups$a)
+qqnorm(ex2_2D_groups$b)
+par(mfrow = c(1, 2))
+qqnorm(ex3_1D_groups$a)
+qqnorm(ex3_1D_groups$b)
+par(mfrow = c(1, 2))
+qqnorm(ex3_2D_groups$a)
+qqnorm(ex3_2D_groups$b)
+```
+
+
+
+# Full model 1D
+
+```{r}
+base_condition <- (runs$pe_num_positional_dims == 1) & (runs$positional_encoding == "implicit")
+no_span_condition <- base_condition & (runs$apply_positional_mask == "False")
+span_condition <- base_condition & (runs$apply_positional_mask == "True") & (runs$positional_mask_threshold == -1)
+span_threshold_condition <- base_condition & (runs$apply_positional_mask == "True") & (runs$positional_mask_threshold == 0.1)
+
+runs$treat <- ""
+runs[no_span_condition, ]$treat <- "no_span"
+runs[span_condition, ]$treat <- "span"
+runs[span_threshold_condition, ]$treat <- "span_threshold"
+
+columns <- c(block, ex1_treatment, ex2_treatment, ex3_treatment, response, "treat")
+runs[no_span_condition, columns]
+runs[span_condition, columns]
+runs[span_threshold_condition, columns]
+
+implicit_runs <- runs[base_condition, columns]
+repeated_anova_test(implicit_runs, response, "treat", block)
+
+boxplot_values(runs[no_span_condition, response])
+boxplot_values(runs[span_condition, response])
+boxplot_values(runs[span_threshold_condition, response])
+```
+
+
+# Full model 2D
+
+```{r}
+base_condition <- (runs$pe_num_positional_dims == 2) & (runs$positional_encoding == "implicit")
+no_span_condition <- base_condition & (runs$apply_positional_mask == "False")
+span_condition <- base_condition & (runs$apply_positional_mask == "True") & (runs$positional_mask_threshold == -1)
+span_threshold_condition <- base_condition & (runs$apply_positional_mask == "True") & (runs$positional_mask_threshold == 0.1)
+
+runs$treat <- ""
+runs[no_span_condition, ]$treat <- "no_span"
+runs[span_condition, ]$treat <- "span"
+runs[span_threshold_condition, ]$treat <- "span_threshold"
+
+columns <- c(block, ex1_treatment, ex2_treatment, ex3_treatment, response, "treat")
+runs[no_span_condition, columns]
+runs[span_condition, columns]
+runs[span_threshold_condition, columns]
+
+implicit_runs <- runs[base_condition, columns]
+repeated_anova_test(implicit_runs, response, "treat", block)
+
+boxplot_values(runs[no_span_condition, response])
+boxplot_values(runs[span_condition, response])
+boxplot_values(runs[span_threshold_condition, response])
+```
