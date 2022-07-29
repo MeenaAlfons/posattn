@@ -2,7 +2,7 @@
 
 This repository contains the source code accompanying the MSc. Thesis:
 
-**Multi-dimensional Positional Self-Attention With Differentiable Span** [[Draft]](docs/MSc_Draft_Multi_dimensional_Positional_Self_Attention_With_Differentiable_Span.pdf) [Slides]
+**Multi-dimensional Positional Self-Attention With Differentiable Span** [[Draft]](docs/MSc_Draft_Multi_dimensional_Positional_Self_Attention_With_Differentiable_Span.pdf) [[Slides]](docs/MSc_Slides_Multi_dimensional_Positional_Self_Attention_With_Differentiable_Span.pdf)
 
 [Meena Alfons](https://meenaalfons.com), [David W. Romero](https://www.davidromero.ml), and [Michael Cochez]().
 
