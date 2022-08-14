@@ -169,6 +169,16 @@ repeated_anova_test <- function(df, response, treatment, block) {
   model <- lm(formula, data = df)
   anv <- anova(model)
   print(summary(model))
+  print(anv)
+  interaction.plot(
+    x.factor = as.numeric(df[, block]), # x-axis variable
+    trace.factor = df[, treatment], # variable for lines
+    response = df[, response], # y-axis variable
+    trace.label = paste("treatment:", treatment),
+    xlab = paste("block:", block),
+    ylab = paste("response:", response),
+    main = paste(response, "vs", treatment),
+  )
   # qqnorm(residuals(model))
   # plot(fitted(model), residuals(model))
   print(jarque.bera.test(residuals(model)))
@@ -182,6 +192,116 @@ repeated_anova_test(ex3_1D, response, ex3_treatment, block)
 repeated_anova_test(ex3_2D, response, ex3_treatment, block)
 ```
 
+# Random effects ANOVA
+
+```{r}
+random_effects_anova_test <- function(df, response, treatment, block) {
+  formula <- paste(response, "~", treatment, sep = " ")
+  model <- lm(formula, data = df)
+  anv <- anova(model)
+  print(summary(model))
+  print(anv)
+  interaction.plot(
+    x.factor = as.numeric(df[, block]), # x-axis variable
+    trace.factor = df[, treatment], # variable for lines
+    response = df[, response], # y-axis variable
+    trace.label = paste("treatment:", treatment),
+    xlab = paste("block:", block),
+    ylab = paste("response:", response),
+    main = paste(response, "vs", treatment),
+  )
+  # qqnorm(residuals(model))
+  # plot(fitted(model), residuals(model))
+  print(jarque.bera.test(residuals(model)))
+  pvalue <- anv$`Pr(>F)`[1]
+  return(pvalue)
+}
+random_effects_anova_test(ex1, response, ex1_treatment, block)
+random_effects_anova_test(ex2_1D, response, ex2_treatment, block)
+random_effects_anova_test(ex2_2D, response, ex2_treatment, block)
+random_effects_anova_test(ex3_1D, response, ex3_treatment, block)
+random_effects_anova_test(ex3_2D, response, ex3_treatment, block)
+```
+
+
+# Welch
+
+```{r}
+welch_t_test <- function(groups) {
+  group1 <- groups$a
+  group2 <- groups$b
+
+  z <- t.test(group1, group2,
+    paired = F,
+    var.equal = F,
+    alternative = "two.sided"
+  )
+  print(z$estimate)
+  print(paste("difference:", mean(group2) - mean(group1)))
+  print(paste("p-value:", z$p.value))
+  return(z$p.value)
+}
+welch_t_test(ex1_groups)
+welch_t_test(ex2_1D_groups)
+welch_t_test(ex2_2D_groups)
+welch_t_test(ex3_1D_groups)
+welch_t_test(ex3_2D_groups)
+```
+
+
+# Normality test for Welch's t-test
+
+```{r}
+jarque.bera.test(ex1_groups$a)
+jarque.bera.test(ex1_groups$b)
+
+jarque.bera.test(ex2_1D_groups$a)
+jarque.bera.test(ex2_1D_groups$b)
+
+jarque.bera.test(ex2_2D_groups$a)
+jarque.bera.test(ex2_2D_groups$b)
+
+jarque.bera.test(ex3_1D_groups$a)
+jarque.bera.test(ex3_1D_groups$b)
+
+jarque.bera.test(ex3_2D_groups$a)
+jarque.bera.test(ex3_2D_groups$b)
+```
+
+# Power Analysis - Welch's t-test
+
+```{r}
+power_welch_test <- function(groups, power, n, type = "two.sample") {
+  group1 <- groups$a
+  group2 <- groups$b
+
+  # The observed difference and standard deviation.
+  mean_difference <- abs(mean(group1) - mean(group2))
+  standard_deviation <- sd(c(mean(group1), mean(group2)))
+  print(sprintf(
+    "the observed difference and standard deviation: %.4f and %.4f",
+    mean_difference,
+    standard_deviation
+  ))
+  d <- mean_difference / standard_deviation
+
+  pwr.t.test(
+    d = d,
+    n = n,
+    power = power,
+    sig.level = 0.05,
+    type = type,
+    alternative = "two.sided"
+  )
+}
+n <- c(5, 6, 7, 8, 9)
+power <- NULL
+power_welch_test(ex1_groups, power, n)
+power_welch_test(ex2_1D_groups, power, n)
+power_welch_test(ex2_2D_groups, power, n)
+power_welch_test(ex3_1D_groups, power, n)
+power_welch_test(ex3_2D_groups, power, n)
+```
 
 # Normality 
 
